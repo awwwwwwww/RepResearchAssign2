@@ -1,0 +1,64 @@
+---
+title: "Reproducable Research Week 4 Project 2 Report"
+author: "Adam Weissman"
+date: "8 September 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,cache=TRUE)
+```
+
+## Overview
+The basic goal of this assignment is to explore the NOAA Storm Database and answer some basic questions about severe weather events.
+
+Documentation on the National Oceanic and Atmospheric Administration Storm dataset:
+[National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+[National Climatic Data Center Storm Events FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+
+Setup dependency libraries, download the dataset, and load it into R.
+
+```{r init}
+library(knitr)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(lubridate)
+
+dlzip="StormData.csv.bz2"
+dlurl="https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+datafilename="StormData.csv.bz2"
+
+if(!file.exists(dlzip)){
+    download.file(dlurl,dlzip)
+}
+```
+```{r readdata}
+storm<-read_csv(dlzip)
+
+```
+
+## Clean data
+Date field is fine, but want to convert to lubridate type. Time zones aren't in Olsen Names, but don't really need time, so I won't clean it.
+
+```{r clean}
+storm$BGN_DATE<-mdy_hms(storm$BGN_DATE)
+storm$END_DATE<-mdy_hms(storm$END_DATE)
+```
+
+## Question 1 - Event Type Damage
+Across the United States, which types of events (as indicated in the \color{red}{\verb|EVTYPE|}EVTYPE variable) are most harmful with respect to population health?
+
+To find insight on this question with the NOAA storm data, a plot must be generated showing effects of each storm type on population health.
+
+```{r q1}
+popHealth<-storm %>% group_by(EVTYPE) %>% summarise(fatalWInj=sum(FATALITIES,INJURIES))
+popHealth$EVTYPE<-with(popHealth,factor(popHealth$EVTYPE,levels=popHealth[order(-fatalWInj),]$EVTYPE))
+popHealth<-arrange(popHealth,desc(fatalWInj))
+plotData<-popHealth[1:10,]
+plotData<-rbind.data.frame(plotData,cbind(EVTYPE="All other", fatalWInj=sum(popHealth[11:nrow(popHealth),2])))
+g<-ggplot(plotData,aes(x=EVTYPE,y=as.numeric(fatalWInj)))
+g+geom_col()+theme(axis.text.x=element_text(angle=90,hjust=1))+labs(title="Top 10 Most Dangerous Weather Event Types", x="Weather Event Types",y="Total Count of Fatalities and Injuries")
+```
+
+As shown in the plot, tornados are by far the 
